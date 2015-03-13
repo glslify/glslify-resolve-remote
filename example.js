@@ -1,6 +1,5 @@
-var glslify = require('glslify-stream')
-var deparse = require('glsl-deparser')
-var from    = require('new-from')
+var deps    = require('glslify-deps')
+var bundle  = require('glslify-bundle')
 var resolve = require('./')
 
 var shader  = [
@@ -10,7 +9,9 @@ var shader  = [
 , '}'
 ].join('\n')
 
-from([shader])
-  .pipe(glslify('/', { resolve: resolve(), input: true }))
-  .pipe(deparse())
-  .pipe(process.stdout)
+deps({
+  resolve: resolve()
+}).inline(shader, '/', function(err, tree) {
+  if (err) throw err
+  console.log(bundle(tree))
+})

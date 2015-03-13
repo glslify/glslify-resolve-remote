@@ -21,22 +21,33 @@ available in full on publish. 99% of the time this won't be an issue though
 To use this module, pass it in as a custom resolver to glslify like so:
 
 ``` javascript
-var resolve = require('glslify-resolve-remote')(__dirname + '/.glslify')
-var glslify = require('glslify-stream')
-var deparse = require('glsl-deparser')
-var fs      = require('fs')
+var resolve = require('glslify-resolve-remote')
+var bundle  = require('glslify-bundle')
+var deps    = require('glslify-deps')
 
-var src = process.argv[2]
+var src = `
+#pragma glslify: ease = require(glsl-easings/bounce-in-out)
 
-fs.createReadStream(src)
-  .pipe(glslify('/', { resolve: resolve, input: true }))
-  .pipe(deparse())
-  .pipe(process.stdout)
+void main() {
+  gl_FragColor = vec4(vec3(ease(0.5)), 1.0);
+}
+`
+
+var depper = deps({
+  resolve: resolve(__dirname + '/.glslify')
+})
+
+depper.inline(src, '/', function(err, src) {
+  if (err) throw err
+
+  // no "node_modules" required!
+  console.log(src)
+})
 ```
 
 You can optionally pass in a cache directory as the first argument to change
-where downloaded packages are stored on disk. They should, in theory, only
-be downloaded once when first required.
+where downloaded packages are stored on disk. They should, only be downloaded
+once when first required.
 
 ## License
 

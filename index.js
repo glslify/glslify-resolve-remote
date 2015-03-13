@@ -2,99 +2,84 @@ var readJSON = require('read-package-json')
 var resolve  = require('glsl-resolve')
 var request  = require('request')
 var findup   = require('findup')
-var mkdirp   = require('mkdirp')
 var path     = require('path')
-var zlib     = require('zlib')
-var tar      = require('tar')
 var fs       = require('fs')
 
 module.exports = remoteResolve
 
 function remoteResolve(cache) {
-  cache = cache || path.join(__dirname, '.glslify')
+  var npmdl = require('npmdl')(
+    cache = cache || path.resolve('.glslify')
+  )
 
   return remoteResolve
 
-  function remoteResolve(src, dst, ready) {
+  function remoteResolve(dst, opts, ready) {
+    var src = (opts = opts || {}).basedir
+
     // handle local dependencies as usual
-    if (dst.charAt(0) === '.') return resolve(dst, { basedir: path.dirname(src) }, done)
+    if (dst.charAt(0) === '.') return resolve(dst, {
+      basedir: src
+    }, ready)
+
     // disallow absolute dependencies
     if (dst.charAt(0) === '/') return done(new Error('absolute URLs not permitted'))
 
     // Module dependencies: download the latest version
     // from npm, caching locally where possible.
-    var paths = dst.split(/\/+/g)
+    var paths  = dst.split(/\/+/g)
     var module = paths.shift()
 
     paths = './' + paths.join('/')
 
-    return findup(
-        path.dirname(src)
+    return findup(src
       , 'package.json'
-      , checkJSONVersion
+      , getJSON
     )
 
-    function done(err, destination) {
+    function getJSON(err, pkgDir) {
+      if (err && err.message !== 'not found') return ready(err)
+      if (err) return resolveVersion('latest', gotVersion)
+
+      readJSON(path.join(pkgDir, 'package.json'), function(err, json) {
+        return resolveVersion(json.dependencies && json.dependencies[module] || 'latest', gotVersion)
+      })
+    }
+
+    function resolveVersion(version, done) {
+      request('http://registry.npmjs.com/'+module+'/'+version, {
+        json: true
+      }, function(err, res, body) {
+        if (err) return done(err)
+        done(null, body.version)
+      })
+    }
+
+    function gotVersion(err, version) {
       if (err) return ready(err)
-      var rel = path.relative(cache, destination)
-      if (rel.indexOf('..') === -1) return ready(null, destination)
 
-      ready(new Error(
-        'Module attempting to reach outside of the cache tree.'
-      ))
-    }
+      npmdl(module, version, 'package.json', function(err, json) {
+        if (err) return ready(err)
 
-    function checkJSONVersion(err, result) {
-      if (err && err.message === 'not found') {
-        return request('http://registry.npmjs.org/'+module+'/latest', {
-          json: true
-        }, gotMetadata)
-      }
+        try {
+          json = JSON.parse(json)
+        } catch(err) {
+          return ready(err)
+        }
 
-      if (err) return done(err)
+        var basedir = path.join(cache, module, version, 'package')
 
-      readJSON(path.join(result, 'package.json'), function(err, json) {
-        if (err) return done(err)
+        resolve(paths, {
+          basedir: basedir
+        }, function(err, destination) {
+          if (err) return ready(err)
 
-        var version = json.dependencies && json.dependencies[module] || 'latest'
+          var rel = path.relative(cache, destination)
+          if (rel.indexOf('..') === -1) return ready(null, destination)
 
-        return request('http://registry.npmjs.org/'+module+'/latest', {
-          json: true
-        }, gotMetadata)
+          console.log(rel)
+        })
       })
-    }
-
-    function gotMetadata(err, res, data) {
-      if (err) return done(err)
-
-      var tarballURL = data.dist && data.dist.tarball
-      if (!tarballURL) return done(new Error(
-        'No tarball available for this module'
-      ))
-
-      var version = data.version
-      var directory = path.join(cache, module, version)
-      var pack = path.join(directory, 'package')
-      var pkgjson = path.join(pack, 'package.json')
-
-      fs.exists(pkgjson, function(exists) {
-        if (exists) return resolve(paths, { basedir: pack }, done)
-
-        mkdirp(directory, preppedDirectory)
-      })
-
-      function preppedDirectory(err) {
-        if (err) return done(err)
-
-        request.get(tarballURL)
-          .pipe(zlib.createGunzip())
-          .pipe(tar.Extract({ path: directory }))
-          .once('end', function() {
-            if (!paths) return console.error(paths)
-
-            resolve(paths, { basedir: pack }, done)
-          })
-      }
     }
   }
 }
