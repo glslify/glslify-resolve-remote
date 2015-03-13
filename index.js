@@ -77,7 +77,9 @@ function remoteResolve(cache) {
           var rel = path.relative(cache, destination)
           if (rel.indexOf('..') === -1) return ready(null, destination)
 
-          console.log(rel)
+          ready(new Error(
+            'Module attempting to reach outside of the cache tree.'
+          ))
         })
       })
     }
