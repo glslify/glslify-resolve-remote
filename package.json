@@ -1,6 +1,6 @@
 {
   "name": "glslify-resolve-remote",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "A replacement resolver function for glslify that lets you automatically pull in GLSL modules from npm",
   "main": "index.js",
   "license": "MIT",
