@@ -17,6 +17,10 @@ function remoteResolve(cache) {
   function remoteResolve(dst, opts, ready) {
     var src = (opts = opts || {}).basedir
 
+    dst = dst.trim()
+    dst = dst.replace(/^'|'$/g, '')
+    dst = dst.replace(/^"|"$/g, '')
+
     // handle local dependencies as usual
     if (dst.charAt(0) === '.') return resolve(dst, {
       basedir: src

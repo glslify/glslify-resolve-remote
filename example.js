@@ -3,7 +3,7 @@ var bundle  = require('glslify-bundle')
 var resolve = require('./')
 
 var shader  = [
-  '#pragma glslify: ease = require(glsl-easings/bounce-in-out)'
+  '#pragma glslify: ease = require( "glsl-easings/bounce-in-out" )'
 , 'void main() {'
 , '  gl_FragColor = vec4(vec3(ease(0.5)), 1.0);'
 , '}'
