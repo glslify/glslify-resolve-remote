@@ -1,16 +1,20 @@
 var readJSON = require('read-package-json')
 var resolve  = require('glsl-resolve')
 var request  = require('request')
+var semver   = require('semver')
 var findup   = require('findup')
 var path     = require('path')
 var fs       = require('fs')
 
 module.exports = remoteResolve
 
-function remoteResolve(cache) {
-  var npmdl = require('npmdl')(
-    cache = cache || path.resolve('.glslify')
-  )
+function remoteResolve(config) {
+  if (typeof config === 'string') config = { cache: config }
+
+  var cache = config.cache || path.resolve('.glslify')
+  var npmdl = require('npmdl')(cache)
+
+  config = config || {}
 
   return remoteResolve
 
@@ -50,12 +54,19 @@ function remoteResolve(cache) {
       })
     }
 
-    function resolveVersion(version, done) {
+    function resolveVersion(version, next) {
+      if (config.offline) {
+        var versions = fs.readdirSync(path.join(cache, module))
+        var latest   = semver.maxSatisfying(versions, '*')
+
+        return next(null, latest)
+      }
+
       request('http://registry.npmjs.com/'+module+'/'+version, {
         json: true
       }, function(err, res, body) {
-        if (err) return done(err)
-        done(null, body.version)
+        if (err) return next(err)
+        next(null, body.version)
       })
     }
 

@@ -16,7 +16,7 @@ available in full on publish. 99% of the time this won't be an issue though
 
 [![NPM](https://nodei.co/npm/glslify-resolve-remote.png)](https://nodei.co/npm/glslify-resolve-remote/)
 
-### resolve([cacheDirectory])
+### resolve([options])
 
 To use this module, pass it in as a custom resolver to glslify like so:
 
@@ -34,7 +34,9 @@ void main() {
 `
 
 var depper = deps({
-  resolve: resolve(__dirname + '/.glslify')
+  resolve: resolve({
+    cache: __dirname + '/.glslify'
+  })
 })
 
 depper.inline(src, '/', function(err, src) {
@@ -45,9 +47,14 @@ depper.inline(src, '/', function(err, src) {
 })
 ```
 
-You can optionally pass in a cache directory as the first argument to change
-where downloaded packages are stored on disk. They should, only be downloaded
-once when first required.
+The following options are also available:
+
+* `cache`: change where downloaded packages are stored on disk. They should only
+  be downloaded once when first required.
+* `offline`: rely solely on the cache wherever possible. Identended for use in
+  presentations at events such as [CampJS](http://campjs.com/), where internet
+  is limited or unavailable. Also useful if you're on the go and don't always
+  have internet access.
 
 ## License
 
